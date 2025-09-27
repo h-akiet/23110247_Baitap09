@@ -1,29 +1,32 @@
 package vn.iotstar.entity;
 
+import java.io.Serializable;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
-import java.util.Set;
-
-@Entity
-@Table(name = "users")
 @Data
-public class User {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Table(name = "Users")
+public class User implements Serializable {
+    private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
+    private Long id;
     private String fullname;
-    @Column(unique = true)
     private String email;
     private String password;
     private String phone;
 
-    // optional: users favorite categories (many-to-many)
-    @ManyToMany
-    @JoinTable(name = "user_category",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "category_id"))
-    private Set<Category> favoriteCategories;
-
-    // getters/setters (omitted for brevity)
+    @OneToMany(mappedBy = "user")
+    @JsonIgnore
+    private List<Product> products;
 }

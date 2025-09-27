@@ -1,21 +1,31 @@
 package vn.iotstar.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
-
+import java.io.Serializable;
+import java.util.HashSet;
 import java.util.Set;
 
-@Entity
-@Table(name = "category")
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.*;
+import lombok.*;
+
 @Data
-public class Category {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Table(name = "Categories")
+public class Category implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include 
     private Long id;
-    private String name;
-    private String images; // url or path
+    private String name; // Matches findByName
+    private String images;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    private Set<Product> products;
-
-    // getters/setters
+    @ManyToMany(mappedBy = "categories")
+    @JsonIgnore
+    private Set<Product> products = new HashSet<>();
 }

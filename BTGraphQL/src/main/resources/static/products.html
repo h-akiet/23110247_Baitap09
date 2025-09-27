@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý Product</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+
+  <h1 class="mb-4 text-primary">Quản lý Product</h1>
+
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white">Thêm Product</div>
+    <div class="card-body">
+      <form id="createProdForm" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Tiêu đề</label>
+          <input type="text" id="ptitle" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Số lượng</label>
+          <input type="number" id="pquantity" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Mô tả</label>
+          <input type="text" id="pdesc" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Giá</label>
+          <input type="number" id="pprice" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">UserId</label>
+          <input type="number" id="puserid" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CategoryIds (phân cách bằng dấu phẩy)</label>
+          <input type="text" id="pcategoryids" class="form-control" placeholder="1, 2, 3">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-success">Thêm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header bg-warning">Cập nhật Product</div>
+    <div class="card-body">
+      <form id="updateProdForm" class="row g-3">
+        <div class="col-md-2">
+          <label class="form-label">ID</label>
+          <input type="number" id="pid" class="form-control" required>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Tiêu đề</label>
+          <input type="text" id="uptitle" class="form-control" required>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Số lượng</label>
+          <input type="number" id="upquantity" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Mô tả</label>
+          <input type="text" id="updesc" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Giá</label>
+          <input type="number" id="upprice" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">UserId</label>
+          <input type="number" id="upuserid" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CategoryIds (phân cách bằng dấu phẩy)</label>
+          <input type="text" id="upcategoryids" class="form-control" placeholder="1, 2, 3">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-warning">Cập nhật</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="mb-4">
+    <h2>Lọc theo Category</h2>
+    <div class="input-group w-25">
+      <input type="number" id="filterCatId" class="form-control" placeholder="Nhập categoryId">
+      <button class="btn btn-info" onclick="filterByCategory()">Lọc</button>
+    </div>
+  </div>
+
+  <h2 class="mb-3">Danh sách Product</h2>
+  <button onclick="loadProducts()" class="btn btn-primary mb-3">Hiển thị tất cả (giá ↑)</button>
+  <table class="table table-striped table-hover">
+    <thead>
+      <tr>
+        <th>ID</th><th>Tiêu đề</th><th>Giá</th><th>Số lượng</th>
+        <th>User</th><th>Category</th><th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="prodList"></tbody>
+  </table>
+
+  <script>
+    const endpoint = "/graphql";
+
+    // Hàm chung để render (vẽ) một dòng sản phẩm
+    function renderProductRow(p) {
+        // Lấy tên User, xử lý trường hợp User là null
+        const userName = p.user ? p.user.fullname : 'N/A'; 
+        
+        // Lấy tên Categories, xử lý trường hợp Categories là null hoặc rỗng
+        const categoryNames = p.categories && p.categories.length > 0 
+                                ? p.categories.map(c => c.name).join(", ") 
+                                : '-';
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${p.id}</td>
+            <td>${p.title}</td>
+            <td>${p.price}đ</td>
+            <td>${p.quantity}</td>
+            <td>${userName}</td>
+            <td>${categoryNames}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">Xóa</button></td>
+        `;
+        return tr;
+    }
+
+    // Hiển thị product theo giá ↑
+    function loadProducts() {
+      const query = `query {
+        productsSortedByPrice { 
+          id title price quantity desc 
+          user { fullname } 
+          categories { id name }
+        }
+      }`;
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({query})
+      })
+      .then(res => res.json())
+      .then(res => {
+        const tbody = document.getElementById("prodList");
+        tbody.innerHTML = "";
+        if (res.data && res.data.productsSortedByPrice) {
+            res.data.productsSortedByPrice.forEach(p => {
+                tbody.appendChild(renderProductRow(p));
+            });
+        }
+      });
+    }
+
+    // Lọc theo category - ĐÃ SỬA LỖI HIỂN THỊ VÀ THIẾU NÚT XÓA
+    function filterByCategory() {
+      const id = document.getElementById("filterCatId").value;
+      if (!id) {
+          alert("Vui lòng nhập Category ID để lọc.");
+          return;
+      }
+      
+      // Đã sửa query để yêu cầu tất cả các trường cần thiết
+      const query = `query {
+        productsByCategory(categoryId: ${id}) { 
+          id 
+          title 
+          price 
+          quantity             
+          user { fullname }    
+          categories { id name }
+        }
+      }`;
+      
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({query})
+      })
+      .then(res => res.json())
+      .then(res => {
+        const tbody = document.getElementById("prodList");
+        tbody.innerHTML = "";
+        if (res.data && res.data.productsByCategory) {
+            res.data.productsByCategory.forEach(p => {
+                // Sử dụng hàm render chung để đảm bảo đầy đủ cột và nút Xóa
+                tbody.appendChild(renderProductRow(p));
+            });
+        }
+      })
+      .catch(error => {
+          console.error('Lỗi khi lọc sản phẩm:', error);
+          alert('Không tìm thấy sản phẩm hoặc có lỗi xảy ra.');
+      });
+    }
+
+    // Create Product
+    document.getElementById("createProdForm").onsubmit = e => {
+      e.preventDefault();
+      
+      // Xử lý Category IDs: Lấy giá trị, tách bằng dấu phẩy, loại bỏ khoảng trắng và rỗng
+      const categoryIds = pcategoryids.value.split(',')
+                                            .map(id => id.trim())
+                                            .filter(id => id !== '')
+                                            .map(id => parseInt(id));
+      
+      // Chuyển mảng IDs thành chuỗi cho GraphQL
+      const categoryIdsString = categoryIds.length > 0 ? categoryIds.join(", ") : "";
+
+      const mutation = `mutation {
+        createProduct(input: {
+          title: "${ptitle.value}",
+          quantity: ${pquantity.value},
+          desc: "${pdesc.value}",
+          price: ${pprice.value},
+          userId: ${puserid.value},
+          categoryIds: [${categoryIdsString}]
+        }) { id title }
+      }`;
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({query: mutation})
+      }).then(() => loadProducts());
+    };
+
+    // Update Product
+    document.getElementById("updateProdForm").onsubmit = e => {
+      e.preventDefault();
+
+      const categoryIds = upcategoryids.value.split(',')
+                                            .map(id => id.trim())
+                                            .filter(id => id !== '')
+                                            .map(id => parseInt(id));
+      
+      const categoryIdsString = categoryIds.length > 0 ? categoryIds.join(", ") : "";
+
+      const mutation = `mutation {
+        updateProduct(id: ${pid.value}, input: {
+          title: "${uptitle.value}",
+          quantity: ${upquantity.value},
+          desc: "${updesc.value}",
+          price: ${upprice.value},
+          userId: ${upuserid.value},
+          categoryIds: [${categoryIdsString}]
+        }) { id title }
+      }`;
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({query: mutation})
+      }).then(() => loadProducts());
+    };
+
+    // Delete Product
+    function deleteProduct(id) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa Product ID ${id}?`)) {
+            return;
+        }
+      const mutation = `mutation { deleteProduct(id: ${id}) }`;
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({query: mutation})
+      }).then(() => loadProducts());
+    }
+
+    // Load mặc định
+    loadProducts();
+  </script>
+</body>
+</html>
